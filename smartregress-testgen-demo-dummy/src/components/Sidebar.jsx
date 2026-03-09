@@ -45,7 +45,7 @@ export default function Sidebar() {
           </div>
         </div>
         <div className="leading-tight">
-          <div className="text-base font-semibold tracking-tight">TestGen</div>
+          <div className="text-base font-semibold tracking-tight">WardenIQ</div>
           {locked ? (
             <div className="mt-0.5 text-xs text-slate-400">
               Complete demo setup to unlock

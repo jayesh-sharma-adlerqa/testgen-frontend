@@ -10,6 +10,7 @@ import UploadDocumentsStage from "./stages/UploadDocumentsStage";
 import VersionsListStage from "./stages/VersionsListStage";
 import VersionDetailStage from "./stages/VersionDetailStage";
 import GenerateStage from "./stages/GenerateStage";
+import CoverageStage from "./stages/CoverageStage";
 import EditStage from "./stages/EditStage";
 import ExportStage from "./stages/ExportStage";
 
@@ -33,7 +34,7 @@ const STAGE_COMPONENTS = {
   "version-detail": VersionDetailStage,
   "generate": GenerateStage,
   "validator": GenerateStage,
-  "coverage": GenerateStage,
+  "coverage": CoverageStage,
   "edit": EditStage,
   "export": ExportStage,
 };
@@ -48,7 +49,6 @@ export default function ProjectFlowPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <ProjectFlowBreadcrumbs />
-
       {StageComponent ? <StageComponent /> : <UnknownStage stageKey={stageKey} />}
     </div>
   );
