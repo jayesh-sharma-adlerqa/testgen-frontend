@@ -3,7 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getErrorMessage } from "../../../api/http";
 import { useProjectSessionStore } from "../../../store/ProjectSessionStore";
-import { fetchFeatureDocumentsRegistry, deriveVersionsFromRegistry } from "../../../projectFlow/featureDocsApi";
+import {
+  fetchFeatureDocumentsRegistry,
+  deriveVersionsFromRegistry,
+} from "../../../projectFlow/featureDocsApi";
+
+function IconFolder(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M3.75 7.5A2.25 2.25 0 0 1 6 5.25h3.07c.38 0 .74.15 1.01.42l1 1c.27.27.63.42 1.01.42H18A2.25 2.25 0 0 1 20.25 9.3v7.2A2.25 2.25 0 0 1 18 18.75H6a2.25 2.25 0 0 1-2.25-2.25V7.5Z" />
+    </svg>
+  );
+}
 
 function IconPlus(props) {
   return (
@@ -19,51 +30,43 @@ function IconPlus(props) {
   );
 }
 
-function IconChevronRight(props) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-      <path
-        d="M9 6l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function groupByVersion(registry) {
-  const safeRegistry = Array.isArray(registry?.items) ? registry : { items: Array.isArray(registry) ? registry : [] };
+  const safeRegistry = Array.isArray(registry?.items)
+    ? registry
+    : { items: Array.isArray(registry) ? registry : [] };
+
   const items = safeRegistry.items;
   const derived = deriveVersionsFromRegistry(safeRegistry);
   const map = new Map();
 
-  for (const it of items) {
-    const v = it?.versionNumber;
-    if (!Number.isFinite(v)) continue;
+  for (const item of items) {
+    const versionNumber = item?.versionNumber;
+    if (!Number.isFinite(versionNumber)) continue;
 
-    const key = String(v);
+    const key = String(versionNumber);
+
     if (!map.has(key)) {
       map.set(key, {
-        versionNumber: v,
+        versionNumber,
         docTypes: new Set(),
         items: [],
-        createdAt: it?.createdAt || null,
-        indexingStatus: it?.indexingStatus || null,
+        createdAt: item?.createdAt || null,
+        indexingStatus: item?.indexingStatus || null,
       });
     }
 
     const bucket = map.get(key);
-    if (it?.docType) bucket.docTypes.add(it.docType);
-    bucket.items.push(it);
 
-    if (it?.createdAt) bucket.createdAt = it.createdAt;
-    if (it?.indexingStatus) bucket.indexingStatus = it.indexingStatus;
+    if (item?.docType) bucket.docTypes.add(item.docType);
+    bucket.items.push(item);
+
+    if (item?.createdAt) bucket.createdAt = item.createdAt;
+    if (item?.indexingStatus) bucket.indexingStatus = item.indexingStatus;
   }
 
   for (const versionNumber of derived.versions) {
     const key = String(versionNumber);
+
     if (!map.has(key)) {
       map.set(key, {
         versionNumber,
@@ -76,12 +79,29 @@ function groupByVersion(registry) {
   }
 
   const rows = Array.from(map.values());
-  rows.sort((a, b) => b.versionNumber - a.versionNumber);
+  rows.sort((a, b) => a.versionNumber - b.versionNumber);
 
   return rows.map((row) => ({
     ...row,
     docTypes: Array.from(row.docTypes),
   }));
+}
+
+function VersionFolderRow({ versionNumber, onOpen }) {
+  const label = String(versionNumber).padStart(2, "0");
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(versionNumber)}
+      className="group flex w-full items-center gap-3 rounded-[10px] border border-white/[0.04] bg-white/[0.02] px-4 py-3 text-left transition duration-200 hover:border-white/[0.08] hover:bg-white/[0.04]"
+    >
+      <IconFolder className="h-6 w-6 shrink-0 text-[#D9D285]" />
+      <span className="truncate text-sm font-medium text-slate-200">
+        Version {label}
+      </span>
+    </button>
+  );
 }
 
 export default function VersionsListStage() {
@@ -115,20 +135,22 @@ export default function VersionsListStage() {
     navigate("/projects?stage=upload-documents");
   }
 
-  function openVersion(v) {
-    setActiveVersion(v);
+  function openVersion(versionNumber) {
+    setActiveVersion(versionNumber);
     navigate("/projects?stage=version-detail");
   }
 
   if (!projectId || !featureId) {
     return (
-      <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-6">
+      <div className="rounded-[18px] border border-white/8 bg-white/[0.02] p-6">
         <div className="text-base font-semibold text-white">No feature selected</div>
-        <div className="mt-2 text-sm text-slate-400">Please select a feature first.</div>
+        <div className="mt-2 text-sm text-slate-400">
+          Please select a feature first.
+        </div>
         <button
           type="button"
           onClick={() => navigate("/projects?stage=feature-list")}
-          className="mt-5 rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
+          className="mt-5 rounded-xl bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/15"
         >
           Go to Feature List
         </button>
@@ -138,11 +160,14 @@ export default function VersionsListStage() {
 
   if (registryQuery.isLoading) {
     return (
-      <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 w-48 rounded bg-white/5" />
-          <div className="h-16 rounded-2xl bg-white/5" />
-          <div className="h-16 rounded-2xl bg-white/5" />
+      <div className="rounded-[18px] border border-white/8 bg-white/[0.02] p-6">
+        <div className="animate-pulse space-y-3">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-[50px] rounded-[10px] border border-white/[0.04] bg-white/[0.02]"
+            />
+          ))}
         </div>
       </div>
     );
@@ -150,15 +175,19 @@ export default function VersionsListStage() {
 
   if (registryQuery.isError) {
     return (
-      <div className="rounded-[22px] border border-rose-400/20 bg-rose-500/10 p-6">
-        <div className="text-base font-semibold text-rose-100">Failed to load versions</div>
-        <div className="mt-2 text-sm text-rose-200/90">{getErrorMessage(registryQuery.error)}</div>
+      <div className="rounded-[18px] border border-rose-400/20 bg-rose-500/10 p-6">
+        <div className="text-base font-semibold text-rose-100">
+          Failed to load versions
+        </div>
+        <div className="mt-2 text-sm text-rose-200/90">
+          {getErrorMessage(registryQuery.error)}
+        </div>
 
         <div className="mt-5 flex gap-3">
           <button
             type="button"
             onClick={() => registryQuery.refetch()}
-            className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
+            className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/15"
           >
             Retry
           </button>
@@ -166,9 +195,8 @@ export default function VersionsListStage() {
           <button
             type="button"
             onClick={goUploadNewVersion}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-500"
           >
-            <IconPlus className="h-4 w-4" />
             Upload Docs
           </button>
         </div>
@@ -178,79 +206,46 @@ export default function VersionsListStage() {
 
   if (!versionsMeta.versions.length) {
     return (
-      <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-10 text-center">
-        <div className="text-xl font-semibold text-white">No versions yet</div>
-        <div className="mt-2 text-sm text-slate-400">
-          Upload documents to create Version 1 for this feature.
-        </div>
+      <div className="flex min-h-[360px] items-center justify-center">
+        <div className="w-full max-w-[520px] rounded-[24px] border border-dashed border-white/10 bg-white/[0.02] px-8 py-12 text-center">
+          <div className="text-lg font-semibold text-white">No versions yet</div>
+          <div className="mt-2 text-sm text-slate-400">
+            Upload documents to create Version 01 for this feature.
+          </div>
 
-        <button
-          type="button"
-          onClick={goUploadNewVersion}
-          className="mt-8 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-500"
-        >
-          <IconPlus className="h-4 w-4" />
-          Upload Documents (v1)
-        </button>
+          <button
+            type="button"
+            onClick={goUploadNewVersion}
+            className="mt-8 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-500"
+          >
+            Upload Documents
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <section className="rounded-[22px] border border-white/8 bg-white/[0.02]">
-      <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
-        <div>
-          <div className="text-lg font-semibold text-white">Versions</div>
-          <div className="mt-1 text-sm text-slate-400">
-            {activeProject?.name || "Project"} / {activeFeature?.name || "Feature"}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={goUploadNewVersion}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
-        >
-          <IconPlus className="h-4 w-4" />
-          New Version
-        </button>
-      </div>
-
-      <div className="space-y-3 px-6 py-6">
+    <section className="relative min-h-[520px] w-full">
+      <div className="space-y-3">
         {versionsMeta.grouped.map((row) => (
-          <button
+          <VersionFolderRow
             key={row.versionNumber}
-            type="button"
-            onClick={() => openVersion(row.versionNumber)}
-            className="flex w-full items-center justify-between rounded-2xl border border-white/6 bg-white/[0.02] px-5 py-4 text-left transition hover:border-white/10 hover:bg-white/[0.03]"
-          >
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white">Version v{row.versionNumber}</div>
-              <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
-                {row.docTypes.length ? (
-                  row.docTypes.map((d) => (
-                    <span key={d} className="rounded-full border border-white/8 bg-white/5 px-2 py-0.5">
-                      {d.toUpperCase()}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-500">Docs uploaded</span>
-                )}
-
-                {row.indexingStatus ? (
-                  <span className="rounded-full border border-white/8 bg-white/5 px-2 py-0.5">
-                    {row.indexingStatus}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="shrink-0 text-slate-300">
-              <IconChevronRight className="h-5 w-5" />
-            </div>
-          </button>
+            versionNumber={row.versionNumber}
+            onOpen={openVersion}
+          />
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={goUploadNewVersion}
+        className="fixed bottom-8 right-8 z-20 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/6 bg-[#1A2435] text-white shadow-[0_12px_28px_rgba(0,0,0,0.35)] transition hover:bg-[#243147]"
+        title="Create new version"
+        aria-label="Create new version"
+      >
+        <IconPlus className="h-6 w-6" />
+      </button>
     </section>
   );
 };

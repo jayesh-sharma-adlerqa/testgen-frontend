@@ -1,3 +1,4 @@
+// src/pages/projects/stages/VersionDetailStage.jsx
 import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -9,42 +10,144 @@ import {
   fetchFeatureDocumentsByVersion,
 } from "../../../projectFlow/featureDocsApi";
 
-function Badge({ children }) {
+function IconFile(props) {
   return (
-    <span className="rounded-full border border-white/8 bg-white/5 px-3 py-1 text-xs text-slate-200">
-      {children}
-    </span>
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M14.25 3.75H7.5A1.75 1.75 0 0 0 5.75 5.5v13A1.75 1.75 0 0 0 7.5 20.25h9A1.75 1.75 0 0 0 18.25 18.5V7.75l-4-4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 3.75V7.5h3.75"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
-function Button({ children, onClick, disabled, variant = "primary" }) {
-  const cls =
-    variant === "primary"
-      ? "bg-blue-600 hover:bg-blue-500"
-      : "bg-white/10 hover:bg-white/15";
+function IconArrowRight(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M5 12h14m0 0-5-5m5 5-5 5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
+function IconX(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function StepBadge({ number }) {
+  return (
+    <div className="inline-flex h-6 min-w-6 items-center justify-center rounded-[7px] bg-[#111B2F] px-2 text-[11px] font-medium text-slate-300">
+      {number}
+    </div>
+  );
+}
+
+function normalizeDocType(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function getDocByType(items, targetType) {
+  const target = normalizeDocType(targetType);
+  return (items || []).find((item) => {
+    const rawType =
+      item?.docType ??
+      item?.type ??
+      item?.documentType ??
+      item?.raw?.docType ??
+      item?.raw?.type ??
+      item?.raw?.documentType ??
+      "";
+    return normalizeDocType(rawType) === target;
+  }) || null;
+}
+
+function getDocLabel(item, fallback) {
+  if (!item) return "";
+
+  return (
+    item?.fileName ||
+    item?.filename ||
+    item?.originalName ||
+    item?.originalFilename ||
+    item?.sourceName ||
+    item?.title ||
+    item?.name ||
+    item?.documentName ||
+    item?.url ||
+    item?.link ||
+    item?.figmaUrl ||
+    item?.pageId ||
+    fallback
+  );
+}
+
+function FieldValue({ value, isFile = false }) {
+  return (
+    <div className="flex min-h-[30px] items-center rounded-[8px] border border-[#6078A8] bg-[#20293B] px-3">
+      {isFile ? (
+        <IconFile className="mr-2 h-4 w-4 shrink-0 text-slate-300" />
+      ) : null}
+
+      <span className="truncate text-xs text-slate-200">{value}</span>
+
+      <span className="ml-auto pl-3 text-slate-300">
+        <IconX className="h-3.5 w-3.5" />
+      </span>
+    </div>
+  );
+}
+
+function InfoCard({ step, label, children }) {
+  return (
+    <div className="rounded-[12px] bg-[#11192B] px-4 py-4">
+      <div className="flex items-center gap-3">
+        <StepBadge number={step} />
+        <div className="text-[14px] font-medium text-white">{label}</div>
+      </div>
+
+      <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+function BottomActionButton({ label, onClick, disabled }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-xl px-4 py-2 text-sm text-white transition ${cls} disabled:cursor-not-allowed disabled:opacity-60`}
+      className="flex h-[34px] w-full items-center justify-center gap-2 rounded-[6px] bg-[#2D67C8] px-4 text-sm font-medium text-white transition hover:bg-[#3772D7] disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {children}
+      <span>{label}</span>
+      <IconArrowRight className="h-4 w-4" />
     </button>
   );
-}
-
-function formatDocType(docType) {
-  if (!docType) return "DOCUMENT";
-  return String(docType).toUpperCase();
-}
-
-function buildDocDescription(item) {
-  const parts = [];
-  if (item?.sourceType) parts.push(String(item.sourceType).toUpperCase());
-  if (item?.sourceValue) parts.push(item.sourceValue);
-  return parts.join(" • ");
 }
 
 export default function VersionDetailStage() {
@@ -63,15 +166,16 @@ export default function VersionDetailStage() {
     queryKey: ["projects", projectId, "features", featureId, "docs-registry"],
     enabled: Boolean(projectId && featureId),
     queryFn: async () => {
-      return fetchFeatureDocumentsRegistry({ projectId, featureId });
+      const items = await fetchFeatureDocumentsRegistry({ projectId, featureId });
+      return deriveVersionsFromRegistry(items);
     },
   });
 
   const resolvedVersion = useMemo(() => {
     if (Number.isFinite(activeVersion?.number)) return activeVersion.number;
-    const derived = deriveVersionsFromRegistry(registryQuery.data || { items: [], versions: [], latest: null });
-    return Number.isFinite(derived.latest) ? derived.latest : null;
-  }, [activeVersion?.number, registryQuery.data]);
+    const latest = registryQuery.data?.latest;
+    return Number.isFinite(latest) ? latest : null;
+  }, [activeVersion?.number, registryQuery.data?.latest]);
 
   useEffect(() => {
     if (!Number.isFinite(activeVersion?.number) && Number.isFinite(resolvedVersion)) {
@@ -80,7 +184,14 @@ export default function VersionDetailStage() {
   }, [activeVersion?.number, resolvedVersion, setActiveVersion]);
 
   const docsQuery = useQuery({
-    queryKey: ["projects", projectId, "features", featureId, "documents-by-version", resolvedVersion],
+    queryKey: [
+      "projects",
+      projectId,
+      "features",
+      featureId,
+      "documents-by-version",
+      resolvedVersion,
+    ],
     enabled: Boolean(projectId && featureId && Number.isFinite(resolvedVersion)),
     queryFn: async () => {
       return fetchFeatureDocumentsByVersion({
@@ -89,12 +200,17 @@ export default function VersionDetailStage() {
         versionNumber: resolvedVersion,
       });
     },
-    staleTime: 5_000,
+    staleTime: 5000,
   });
 
+  const items = docsQuery.data?.items || [];
   const indexingStatus = docsQuery.data?.indexingStatus || null;
   const isReady = String(indexingStatus || "").toUpperCase() === "READY";
-  const docs = Array.isArray(docsQuery.data?.items) ? docsQuery.data.items : [];
+
+  const prdDoc = useMemo(() => getDocByType(items, "prd"), [items]);
+  const hldDoc = useMemo(() => getDocByType(items, "hld"), [items]);
+  const lldDoc = useMemo(() => getDocByType(items, "lld"), [items]);
+  const figmaDoc = useMemo(() => getDocByType(items, "figma"), [items]);
 
   function goNewVersion() {
     clearActiveVersion();
@@ -115,13 +231,15 @@ export default function VersionDetailStage() {
 
   if (!projectId || !featureId) {
     return (
-      <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-6">
+      <div className="rounded-[18px] border border-white/8 bg-white/[0.02] p-6">
         <div className="text-base font-semibold text-white">No feature selected</div>
-        <div className="mt-2 text-sm text-slate-400">Please select a feature first.</div>
+        <div className="mt-2 text-sm text-slate-400">
+          Please select a feature first.
+        </div>
         <button
           type="button"
           onClick={() => navigate("/projects?stage=feature-list")}
-          className="mt-5 rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
+          className="mt-5 rounded-xl bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/15"
         >
           Go to Feature List
         </button>
@@ -131,10 +249,15 @@ export default function VersionDetailStage() {
 
   if (registryQuery.isLoading) {
     return (
-      <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-6">
-        <div className="animate-pulse space-y-3">
+      <div className="rounded-[18px] border border-[#111A2C] bg-[#081221] p-6">
+        <div className="animate-pulse space-y-4">
           <div className="h-5 w-40 rounded bg-white/5" />
-          <div className="h-20 rounded-2xl bg-white/5" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="h-24 rounded-[12px] bg-white/5" />
+            <div className="h-24 rounded-[12px] bg-white/5" />
+            <div className="h-24 rounded-[12px] bg-white/5" />
+            <div className="h-24 rounded-[12px] bg-white/5" />
+          </div>
         </div>
       </div>
     );
@@ -142,14 +265,30 @@ export default function VersionDetailStage() {
 
   if (registryQuery.isError) {
     return (
-      <div className="rounded-[22px] border border-rose-400/20 bg-rose-500/10 p-6">
-        <div className="text-base font-semibold text-rose-100">Failed to resolve versions</div>
-        <div className="mt-2 text-sm text-rose-200/90">{getErrorMessage(registryQuery.error)}</div>
+      <div className="rounded-[18px] border border-rose-400/20 bg-rose-500/10 p-6">
+        <div className="text-base font-semibold text-rose-100">
+          Failed to resolve versions
+        </div>
+        <div className="mt-2 text-sm text-rose-200/90">
+          {getErrorMessage(registryQuery.error)}
+        </div>
+
         <div className="mt-5 flex gap-3">
-          <Button variant="secondary" onClick={() => registryQuery.refetch()}>
+          <button
+            type="button"
+            onClick={() => registryQuery.refetch()}
+            className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/15"
+          >
             Retry
-          </Button>
-          <Button onClick={() => navigate("/projects?stage=versions-list")}>Back to Versions</Button>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/projects?stage=versions-list")}
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-500"
+          >
+            Back to Versions
+          </button>
         </div>
       </div>
     );
@@ -157,107 +296,103 @@ export default function VersionDetailStage() {
 
   if (!Number.isFinite(resolvedVersion)) {
     return (
-      <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-10 text-center">
-        <div className="text-xl font-semibold text-white">No versions yet</div>
+      <div className="rounded-[18px] border border-[#111A2C] bg-[#081221] p-8 text-center">
+        <div className="text-lg font-semibold text-white">No versions yet</div>
         <div className="mt-2 text-sm text-slate-400">
-          Upload documents to create Version 1 for this feature.
+          Upload documents to create the first version for this feature.
         </div>
 
-        <Button onClick={goNewVersion}>Upload Documents (v1)</Button>
+        <button
+          type="button"
+          onClick={goNewVersion}
+          className="mt-6 rounded-[8px] bg-[#8AA8D9] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#97B4E2]"
+        >
+          Upload Documents
+        </button>
       </div>
     );
   }
 
   return (
-    <section className="rounded-[22px] border border-white/8 bg-white/[0.02]">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 px-6 py-5">
-        <div>
-          <div className="text-lg font-semibold text-white">
-            {activeFeature?.name || "Feature"} — v{resolvedVersion}
-          </div>
-          <div className="mt-1 text-sm text-slate-400">{activeProject?.name || "Project"}</div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Badge>Index: {indexingStatus || "UNKNOWN"}</Badge>
-            {isReady ? <Badge>Generation Enabled</Badge> : <Badge>Generation Disabled</Badge>}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => navigate("/projects?stage=versions-list")}>
-            Versions
-          </Button>
-          <Button variant="secondary" onClick={goNewVersion}>
-            New Version
-          </Button>
-        </div>
-      </div>
-
+    <section className="overflow-hidden rounded-[18px] border border-[#111A2C] bg-[#081221]">
       <div className="px-6 py-6">
         {docsQuery.isLoading ? (
-          <div className="animate-pulse space-y-3">
-            <div className="h-4 w-48 rounded bg-white/5" />
-            <div className="h-24 rounded-2xl bg-white/5" />
+          <div className="animate-pulse space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="h-24 rounded-[12px] bg-white/5" />
+              <div className="h-24 rounded-[12px] bg-white/5" />
+              <div className="h-24 rounded-[12px] bg-white/5" />
+              <div className="h-24 rounded-[12px] bg-white/5" />
+              <div className="h-24 rounded-[12px] bg-white/5" />
+            </div>
           </div>
         ) : docsQuery.isError ? (
-          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-rose-100">
+          <div className="rounded-[12px] border border-rose-400/20 bg-rose-500/10 p-4 text-sm text-rose-200">
             Failed to load documents: {getErrorMessage(docsQuery.error)}
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
-            <div className="text-sm font-semibold text-white">Documents (Version v{resolvedVersion})</div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <InfoCard step="1" label="Feature Name">
+              <FieldValue value={activeFeature?.name || "Untitled Feature"} />
+            </InfoCard>
 
-            {docs.length ? (
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                {docs.map((item, idx) => (
-                  <div
-                    key={item.id || `${item.docType || "doc"}-${idx}`}
-                    className="rounded-2xl border border-white/8 bg-white/[0.02] p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-white">{item.displayName}</div>
-                      <Badge>{formatDocType(item.docType)}</Badge>
-                    </div>
+            <InfoCard step="2" label="PRD">
+              {prdDoc ? (
+                <FieldValue value={getDocLabel(prdDoc, "PRD")} isFile />
+              ) : (
+                <FieldValue value="Not uploaded" />
+              )}
+            </InfoCard>
 
-                    {buildDocDescription(item) ? (
-                      <div className="mt-2 break-all text-xs text-slate-400">{buildDocDescription(item)}</div>
-                    ) : (
-                      <div className="mt-2 text-xs text-slate-500">Document metadata available</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-3 text-sm text-slate-400">
-                No document rows were returned for this version, but the version exists in the registry.
-              </div>
-            )}
+            <InfoCard step="3" label="HLD">
+              {hldDoc ? (
+                <FieldValue value={getDocLabel(hldDoc, "HLD")} isFile />
+              ) : (
+                <FieldValue value="Not uploaded" />
+              )}
+            </InfoCard>
+
+            <InfoCard step="4" label="LLD">
+              {lldDoc ? (
+                <FieldValue value={getDocLabel(lldDoc, "LLD")} isFile />
+              ) : (
+                <FieldValue value="Not uploaded" />
+              )}
+            </InfoCard>
+
+            <InfoCard step="5" label="Figma Link">
+              {figmaDoc ? (
+                <FieldValue value={getDocLabel(figmaDoc, "Figma")} />
+              ) : (
+                <FieldValue value="Not uploaded" />
+              )}
+            </InfoCard>
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border border-white/8 bg-white/[0.02] p-5">
-          <div className="text-sm font-semibold text-white">Actions</div>
-          <div className="mt-2 text-sm text-slate-400">
-            Actions are enabled only when indexing status is READY.
-          </div>
+        <div className="mt-4 text-xs text-slate-500">
+          Version {String(resolvedVersion).padStart(2, "0")}
+          {indexingStatus ? ` • Indexing: ${indexingStatus}` : ""}
+        </div>
+      </div>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button onClick={goGenerate} disabled={!isReady}>
-              Generate Tests
-            </Button>
-            <Button onClick={goValidator} disabled={!isReady} variant="secondary">
-              Validator
-            </Button>
-            <Button onClick={goCoverage} disabled={!isReady} variant="secondary">
-              Coverage
-            </Button>
-          </div>
-
-          {!isReady ? (
-            <div className="mt-4 text-xs text-slate-500">
-              Index status must be READY before generation. Use “New Version” if you need to replace docs.
-            </div>
-          ) : null}
+      <div className="border-t border-white/[0.06] px-6 py-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <BottomActionButton
+            label="Test Case"
+            onClick={goGenerate}
+            disabled={!isReady}
+          />
+          <BottomActionButton
+            label="Validator"
+            onClick={goValidator}
+            disabled={!isReady}
+          />
+          <BottomActionButton
+            label="Code Coverage"
+            onClick={goCoverage}
+            disabled={!isReady}
+          />
         </div>
       </div>
     </section>

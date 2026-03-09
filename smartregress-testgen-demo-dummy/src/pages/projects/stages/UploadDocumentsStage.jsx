@@ -1,13 +1,17 @@
+// src/pages/projects/stages/UploadDocumentsStage.jsx
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { http, getErrorMessage } from "../../../api/http";
 import { useProjectSessionStore } from "../../../store/ProjectSessionStore";
-import { fetchFeatureDocumentsRegistry } from "../../../projectFlow/featureDocsApi";
+import {
+  fetchFeatureDocumentsRegistry,
+  deriveVersionsFromRegistry,
+} from "../../../projectFlow/featureDocsApi";
 
 function StepBadge({ number }) {
   return (
-    <div className="inline-flex h-7 min-w-7 items-center justify-center rounded-lg border border-white/8 bg-white/5 px-2 text-xs font-semibold text-slate-200">
+    <div className="inline-flex h-6 min-w-6 items-center justify-center rounded-[7px] bg-[#111B2F] px-2 text-[11px] font-medium text-slate-300">
       {number}
     </div>
   );
@@ -41,29 +45,48 @@ function IconX(props) {
   );
 }
 
-function DocumentRow({
+function IconFile(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M14.25 3.75H7.5A1.75 1.75 0 0 0 5.75 5.5v13A1.75 1.75 0 0 0 7.5 20.25h9A1.75 1.75 0 0 0 18.25 18.5V7.75l-4-4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 3.75V7.5h3.75"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function UploadField({
   step,
   label,
   placeholder,
-  dashed = true,
   file,
   setFile,
   text,
   setText,
   accept = ".pdf,.doc,.docx",
+  dashed = true,
 }) {
   const fileInputRef = useRef(null);
-  const inputRef = useRef(null);
+  const textInputRef = useRef(null);
 
-  const hasText = Boolean(text?.trim());
   const hasFile = Boolean(file);
-  const showClear = hasText || hasFile;
+  const hasText = Boolean(text?.trim());
+  const hasValue = hasFile || hasText;
 
-  function triggerPickFile() {
+  function triggerFilePick() {
     fileInputRef.current?.click();
   }
 
-  function onFileChange(e) {
+  function handleFileChange(e) {
     const picked = e.target.files?.[0] || null;
     if (picked) {
       setFile(picked);
@@ -72,10 +95,10 @@ function DocumentRow({
     e.target.value = "";
   }
 
-  function onTextChange(e) {
+  function handleTextChange(e) {
     const next = e.target.value;
     setText(next);
-    if (file && next.trim().length > 0) {
+    if (file && next.trim()) {
       setFile(null);
     }
   }
@@ -83,31 +106,32 @@ function DocumentRow({
   function clearValue() {
     setFile(null);
     setText("");
-    inputRef.current?.focus();
+    textInputRef.current?.focus();
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center gap-3">
         <StepBadge number={step} />
-        <div className="text-sm font-semibold text-white">{label}</div>
+        <div className="text-[15px] font-medium text-white">{label}</div>
       </div>
 
       <div
         className={[
-          "flex min-h-[44px] items-center rounded-[10px] px-4",
+          "flex min-h-[42px] items-center rounded-[10px] px-3",
           dashed
-            ? "border border-dashed border-white/[0.10] bg-white/[0.02]"
-            : "border border-white/10 bg-white/[0.02]",
+            ? "border border-dashed border-[#3B4B68] bg-[#121B2C]/70"
+            : "border border-[#31415D] bg-[#1A2334]",
         ].join(" ")}
       >
         {hasFile ? (
-          <div className="mr-3 flex max-w-[45%] items-center gap-2 rounded-lg bg-white/5 px-2 py-1 text-xs text-slate-200 ring-1 ring-white/10">
+          <div className="mr-3 flex max-w-[48%] items-center gap-2 rounded-[8px] border border-[#6078A8] bg-[#20293B] px-3 py-1.5 text-xs text-slate-200">
+            <IconFile className="h-4 w-4 shrink-0 text-slate-300" />
             <span className="truncate">{file.name}</span>
             <button
               type="button"
               onClick={() => setFile(null)}
-              className="rounded-md p-1 text-white/80 hover:bg-white/10"
+              className="ml-1 rounded p-0.5 text-slate-300 transition hover:bg-white/10 hover:text-white"
               title="Remove file"
               aria-label={`Remove file for ${label}`}
             >
@@ -117,11 +141,11 @@ function DocumentRow({
         ) : null}
 
         <input
-          ref={inputRef}
+          ref={textInputRef}
           value={text}
-          onChange={onTextChange}
+          onChange={handleTextChange}
           placeholder={placeholder}
-          className="w-full bg-transparent pr-3 text-sm text-slate-200 outline-none placeholder:text-slate-500"
+          className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
         />
 
         <input
@@ -129,16 +153,16 @@ function DocumentRow({
           type="file"
           accept={accept}
           className="hidden"
-          onChange={onFileChange}
+          onChange={handleFileChange}
         />
 
-        <div className="flex items-center gap-2">
-          {showClear ? (
+        <div className="ml-3 flex items-center gap-2">
+          {hasValue ? (
             <button
               type="button"
               onClick={clearValue}
-              className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-white/80 ring-1 ring-white/10 transition hover:bg-white/10"
-              title="Clear"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-slate-300 transition hover:bg-white/10 hover:text-white"
+              title={`Clear ${label}`}
               aria-label={`Clear ${label}`}
             >
               <IconX className="h-4 w-4" />
@@ -147,8 +171,8 @@ function DocumentRow({
 
           <button
             type="button"
-            onClick={triggerPickFile}
-            className="flex h-7 w-7 items-center justify-center rounded-md bg-[#2A3A5A] text-white/90 transition hover:bg-[#31466F]"
+            onClick={triggerFilePick}
+            className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[#24345B] text-[#9DB5E7] transition hover:bg-[#2C416F] hover:text-white"
             title={hasFile ? "Replace file" : "Upload file"}
             aria-label={`Upload ${label}`}
           >
@@ -181,23 +205,9 @@ export default function UploadDocumentsStage() {
   const [lldText, setLldText] = useState("");
 
   const [figma, setFigma] = useState("");
-
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
 
-  const registryQuery = useQuery({
-    queryKey: ["projects", projectId, "features", featureId, "docs-registry"],
-    enabled: Boolean(projectId && featureId),
-    queryFn: async () => fetchFeatureDocumentsRegistry({ projectId, featureId }),
-    staleTime: 5_000,
-  });
-
-  const nextVersionNumber = useMemo(() => {
-    const latest = Number(registryQuery.data?.latest);
-    return Number.isFinite(latest) ? latest + 1 : 1;
-  }, [registryQuery.data?.latest]);
-
-  const hasPrd = useMemo(() => Boolean(prdFile) || Boolean(prdText.trim()), [prdFile, prdText]);
-
+  // Only one field required: PRD or HLD or LLD or Figma
   const anyProvided = useMemo(() => {
     return (
       Boolean(prdFile) ||
@@ -209,6 +219,8 @@ export default function UploadDocumentsStage() {
       Boolean(figma.trim())
     );
   }, [prdFile, prdText, hldFile, hldText, lldFile, lldText, figma]);
+
+  const submitDisabled = !projectId || !featureId || !anyProvided;
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -225,7 +237,15 @@ export default function UploadDocumentsStage() {
 
       if (figma.trim()) fd.append("figma", figma.trim());
 
-      const versionNumber = Number.isFinite(nextVersionNumber) ? nextVersionNumber : 1;
+      let versionNumber = 1;
+
+      try {
+        const registryItems = await fetchFeatureDocumentsRegistry({ projectId, featureId });
+        const { latest } = deriveVersionsFromRegistry(registryItems);
+        versionNumber = Number.isFinite(latest) ? latest + 1 : 1;
+      } catch {
+        versionNumber = 1;
+      }
 
       const res = await http.post(
         `/projects/${projectId}/features/${featureId}/documents/bulk?versionNumber=${encodeURIComponent(
@@ -251,13 +271,10 @@ export default function UploadDocumentsStage() {
     },
   });
 
-  const submitDisabled = !projectId || !featureId || !hasPrd || uploadMutation.isPending;
-
   function handleContinue() {
     setHasTriedSubmit(true);
 
     if (!projectId || !featureId) return;
-    if (!hasPrd) return;
     if (!anyProvided) return;
 
     uploadMutation.mutate();
@@ -265,16 +282,18 @@ export default function UploadDocumentsStage() {
 
   if (!projectId || !featureId) {
     return (
-      <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-6">
-        <div className="text-base font-semibold text-white">Project / Feature not selected</div>
+      <div className="rounded-[18px] border border-white/8 bg-white/[0.02] p-6">
+        <div className="text-base font-semibold text-white">
+          Project / Feature not selected
+        </div>
         <div className="mt-2 text-sm text-slate-400">
-          Please open a project and feature first (Project List → Feature List → select feature).
+          Please open a project and feature first.
         </div>
 
         <button
           type="button"
           onClick={() => navigate("/projects?stage=project-list")}
-          className="mt-5 rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
+          className="mt-5 rounded-xl bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/15"
         >
           Go to Project List
         </button>
@@ -283,100 +302,96 @@ export default function UploadDocumentsStage() {
   }
 
   return (
-    <div className="w-full">
-      <div className="mb-5">
-        <div className="text-lg font-semibold text-white">
-          {activeFeature?.name || "Feature"} — Create Version v{nextVersionNumber}
-        </div>
-        <div className="mt-1 text-sm text-slate-400">
-          PRD is required. HLD, LLD and Figma are optional.
-        </div>
-      </div>
+    <section className="w-full">
+      <div className="rounded-[18px] border border-[#111A2C] bg-[#081221] px-6 py-6 shadow-[0_18px_60px_rgba(0,0,0,0.25)]">
+        <div className="rounded-[16px] border border-[#0E1626] bg-[#0B1423] px-6 py-7">
+          <div className="space-y-7">
+            <UploadField
+              step="1"
+              label="Upload PRD"
+              placeholder="Paste link or upload DOC"
+              file={prdFile}
+              setFile={setPrdFile}
+              text={prdText}
+              setText={setPrdText}
+              dashed
+            />
 
-      <div className="rounded-[26px] border border-white/8 bg-white/[0.02] p-10 shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
-        <div className="space-y-6">
-          <DocumentRow
-            step="1"
-            label="Upload PRD"
-            placeholder="Paste link or upload DOC"
-            dashed
-            file={prdFile}
-            setFile={setPrdFile}
-            text={prdText}
-            setText={setPrdText}
-          />
+            <UploadField
+              step="2"
+              label="Upload HLD"
+              placeholder="Paste link or upload DOC"
+              file={hldFile}
+              setFile={setHldFile}
+              text={hldText}
+              setText={setHldText}
+              dashed
+            />
 
-          <DocumentRow
-            step="2"
-            label="Upload HLD"
-            placeholder="Paste link or upload DOC"
-            dashed
-            file={hldFile}
-            setFile={setHldFile}
-            text={hldText}
-            setText={setHldText}
-          />
+            <UploadField
+              step="3"
+              label="Upload LLD"
+              placeholder="Paste link or upload DOC"
+              file={lldFile}
+              setFile={setLldFile}
+              text={lldText}
+              setText={setLldText}
+              dashed
+            />
 
-          <DocumentRow
-            step="3"
-            label="Upload LLD"
-            placeholder="Paste link or upload DOC"
-            dashed
-            file={lldFile}
-            setFile={setLldFile}
-            text={lldText}
-            setText={setLldText}
-          />
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <StepBadge number="4" />
+                <div className="text-[15px] font-medium text-white">Figma Link</div>
+              </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <StepBadge number="4" />
-              <div className="text-sm font-semibold text-white">Figma Link</div>
+              <div className="flex min-h-[42px] items-center rounded-[10px] border border-[#31415D] bg-[#1A2334] px-3">
+                <input
+                  value={figma}
+                  onChange={(e) => setFigma(e.target.value)}
+                  placeholder="Paste link"
+                  className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
+                />
+
+                {figma.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => setFigma("")}
+                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-[8px] text-slate-300 transition hover:bg-white/10 hover:text-white"
+                    title="Clear Figma link"
+                    aria-label="Clear Figma link"
+                  >
+                    <IconX className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
             </div>
 
-            <div className="flex min-h-[44px] items-center rounded-[10px] border border-white/10 bg-white/[0.02] px-4">
-              <input
-                value={figma}
-                onChange={(e) => setFigma(e.target.value)}
-                placeholder="Paste link"
-                className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
-              />
-              {figma.trim() ? (
-                <button
-                  type="button"
-                  onClick={() => setFigma("")}
-                  className="ml-2 flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-white/80 ring-1 ring-white/10 transition hover:bg-white/10"
-                  title="Clear Figma link"
-                  aria-label="Clear Figma link"
-                >
-                  <IconX className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-          </div>
+            {hasTriedSubmit && !anyProvided ? (
+              <div className="rounded-[10px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+                Please provide at least one item: PRD, HLD, LLD, or Figma link.
+              </div>
+            ) : null}
 
-          {hasTriedSubmit && !hasPrd ? (
-            <div className="text-sm text-rose-300">Please upload PRD before creating this version.</div>
-          ) : null}
-
-          {uploadMutation.isError ? (
-            <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-              {getErrorMessage(uploadMutation.error)}
-            </div>
-          ) : null}
-
-          <div className="pt-4">
-            <button
-              type="button"
-              onClick={handleContinue}
-              disabled={submitDisabled}
-              className="rounded-lg bg-[#6E8FC2] px-8 py-2.5 text-sm font-medium text-white transition hover:bg-[#7A9AD0] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {uploadMutation.isPending ? "Uploading..." : `Create Version v${nextVersionNumber}`}
-            </button>
+            {uploadMutation.isError ? (
+              <div className="rounded-[10px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                {getErrorMessage(uploadMutation.error)}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
-    </div>
+
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={submitDisabled || uploadMutation.isPending}
+          className="rounded-[8px] bg-[#8AA8D9] px-8 py-2.5 text-sm font-medium text-white transition hover:bg-[#97B4E2] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {uploadMutation.isPending ? "Uploading..." : "Continue"}
+        </button>
+      </div>
+    </section>
   );
 };
