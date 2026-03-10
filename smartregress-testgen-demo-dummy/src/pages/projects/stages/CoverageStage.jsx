@@ -660,9 +660,8 @@ function PriorityBadge({ value }) {
 
   return (
     <span
-      className={`inline-flex min-w-[52px] justify-center rounded-md border px-2 py-1 text-[10px] ${
-        styles[value] || "border-white/10 bg-white/5 text-slate-300"
-      }`}
+      className={`inline-flex min-w-[52px] justify-center rounded-md border px-2 py-1 text-[10px] ${styles[value] || "border-white/10 bg-white/5 text-slate-300"
+        }`}
     >
       {value}
     </span>
@@ -676,19 +675,17 @@ function CoverageModeToggle({ mode, onToggle }) {
     <button
       type="button"
       onClick={onToggle}
-      className={`flex h-6 w-11 items-center rounded-full border px-[2px] transition ${
-        isCovered
+      className={`flex h-6 w-11 items-center rounded-full border px-[2px] transition ${isCovered
           ? "border-[#5277B8] bg-[#0E1723]"
           : "border-[#7B3340] bg-[#150E12]"
-      }`}
+        }`}
       aria-label="Toggle covered and missing test cases"
     >
       <span
-        className={`h-5 w-5 rounded-full transition ${
-          isCovered
+        className={`h-5 w-5 rounded-full transition ${isCovered
             ? "ml-auto bg-[#D6E4FF] shadow-[0_0_8px_rgba(141,180,231,0.45)]"
             : "mr-auto bg-[#B65A69] shadow-[0_0_8px_rgba(182,90,105,0.35)]"
-        }`}
+          }`}
       />
     </button>
   );
@@ -881,11 +878,10 @@ function TestRows({ items, selectedId, onSelect }) {
             key={item.id}
             type="button"
             onClick={() => onSelect(item.id)}
-            className={`flex w-full items-center justify-between gap-3 rounded-[6px] px-4 py-3 text-left text-[12px] transition ${
-              selected
+            className={`flex w-full items-center justify-between gap-3 rounded-[6px] px-4 py-3 text-left text-[12px] transition ${selected
                 ? "border border-[#365C88] bg-[#101A29] text-white"
                 : "border border-transparent bg-[#0B1523] text-slate-200 hover:border-[#213B5C]"
-            }`}
+              }`}
           >
             <span className="truncate">{item.name}</span>
             <PriorityBadge value={item.priority} />
@@ -947,13 +943,13 @@ function AccordionSection({ section, defaultOpen = false }) {
           nextSteps.length > 0
             ? nextSteps
             : [
-                {
-                  id: `${item.id}-step-fallback`,
-                  title: "Step:1",
-                  instruction: "",
-                  result: "",
-                },
-              ],
+              {
+                id: `${item.id}-step-fallback`,
+                title: "Step:1",
+                instruction: "",
+                result: "",
+              },
+            ],
       };
     });
   }
@@ -997,9 +993,8 @@ function AccordionSection({ section, defaultOpen = false }) {
           <div className="rounded-[10px] border border-[#204268] bg-[#07101C] px-4 py-4">
             <div className="flex items-center justify-between gap-4">
               <div
-                className={`text-[20px] font-semibold ${
-                  isCovered ? "text-[#8DB4E7]" : "text-[#FF4C68]"
-                }`}
+                className={`text-[20px] font-semibold ${isCovered ? "text-[#8DB4E7]" : "text-[#FF4C68]"
+                  }`}
               >
                 {isCovered ? "Covered" : "Missing"} ({formatCount(count)})
               </div>
@@ -1008,11 +1003,10 @@ function AccordionSection({ section, defaultOpen = false }) {
             </div>
 
             <div
-              className={`mt-4 grid gap-4 ${
-                selectedItem
+              className={`mt-4 grid gap-4 ${selectedItem
                   ? "grid-cols-1 xl:grid-cols-[1.2fr_0.95fr]"
                   : "grid-cols-1"
-              }`}
+                }`}
             >
               <div>
                 <TestRows
@@ -1208,7 +1202,7 @@ export function CoverageExperience({ standalone = false }) {
       : "v2";
 
     return `${projectName} / ${featureName} / ${versionLabel}`;
-  }, [activeProject?.name, activeFeature?.name, activeVersion?.number]);
+  }, [activeProject, activeFeature, activeVersion]);
 
   const validPrLinks = useMemo(
     () => prLinks.map((value) => value.trim()).filter(Boolean),
