@@ -1,4 +1,3 @@
-// src/pages/projects/stages/GenerateStage.jsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -6,6 +5,7 @@ import { getErrorMessage } from "../../../api/http";
 import { useProjectSessionStore } from "../../../store/ProjectSessionStore";
 import { fetchFeatureDocumentsByVersion } from "../../../projectFlow/featureDocsApi";
 import { useProjectFlow } from "../../../projectFlow/useProjectFlow";
+import { getVersionOutputs } from "../../../api/demoBackend";
 
 const INITIAL_GROUPS = [
   {
@@ -273,14 +273,12 @@ function SectionToggle({ enabled, onToggle }) {
     <button
       type="button"
       onClick={onToggle}
-      className={`relative inline-flex h-5 w-10 items-center rounded-full transition ${
-        enabled ? "bg-[#7FA4E6]" : "bg-white/10"
-      }`}
+      className={`relative inline-flex h-5 w-10 items-center rounded-full transition ${enabled ? "bg-[#7FA4E6]" : "bg-white/10"
+        }`}
     >
       <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition ${
-          enabled ? "translate-x-[22px]" : "translate-x-[3px]"
-        }`}
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition ${enabled ? "translate-x-[22px]" : "translate-x-[3px]"
+          }`}
       />
     </button>
   );
@@ -291,11 +289,10 @@ function TestCaseRow({ item, selected, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center justify-between rounded-[6px] px-4 py-3 text-left transition ${
-        selected
-          ? "border border-[#6078A8] bg-[#0E1524]"
-          : "border border-transparent bg-[#0B1421] hover:bg-[#111A29]"
-      }`}
+      className={`flex w-full items-center justify-between rounded-[6px] px-4 py-3 text-left transition ${selected
+        ? "border border-[#6078A8] bg-[#0E1524]"
+        : "border border-transparent bg-[#0B1421] hover:bg-[#111A29]"
+        }`}
     >
       <span className="truncate pr-4 text-[12px] text-slate-200">
         {item.title}
@@ -310,33 +307,30 @@ function StepCard({ step, onChangeTitle, onChangeContent, onDelete }) {
 
   return (
     <div
-      className={`rounded-[10px] p-4 transition ${
-        isEditing
-          ? "border border-[#35507A] bg-[#0F1828] shadow-[0_0_0_1px_rgba(96,120,168,0.15)]"
-          : "border border-transparent bg-[#11192B]"
-      }`}
+      className={`rounded-[10px] p-4 transition ${isEditing
+        ? "border border-[#35507A] bg-[#0F1828] shadow-[0_0_0_1px_rgba(96,120,168,0.15)]"
+        : "border border-transparent bg-[#11192B]"
+        }`}
     >
       <div className="flex items-start justify-between gap-3">
         <input
           value={step.title}
           readOnly={!isEditing}
           onChange={(e) => onChangeTitle(e.target.value)}
-          className={`w-full rounded-[6px] border px-2 py-1 text-[12px] font-medium outline-none transition ${
-            isEditing
-              ? "border-[#2E4364] bg-[#0B1423] text-slate-100"
-              : "border-transparent bg-transparent text-slate-200"
-          }`}
+          className={`w-full rounded-[6px] border px-2 py-1 text-[12px] font-medium outline-none transition ${isEditing
+            ? "border-[#2E4364] bg-[#0B1423] text-slate-100"
+            : "border-transparent bg-transparent text-slate-200"
+            }`}
         />
 
         <div className="flex items-center gap-2 text-slate-400">
           <button
             type="button"
             onClick={() => setIsEditing((prev) => !prev)}
-            className={`rounded p-1 transition ${
-              isEditing
-                ? "bg-[#1D2C44] text-[#8BB5FF]"
-                : "hover:bg-white/10 hover:text-white"
-            }`}
+            className={`rounded p-1 transition ${isEditing
+              ? "bg-[#1D2C44] text-[#8BB5FF]"
+              : "hover:bg-white/10 hover:text-white"
+              }`}
             title={isEditing ? "Done editing" : "Edit"}
           >
             <IconEdit className="h-3.5 w-3.5" />
@@ -358,11 +352,10 @@ function StepCard({ step, onChangeTitle, onChangeContent, onDelete }) {
         readOnly={!isEditing}
         onChange={(e) => onChangeContent(e.target.value)}
         rows={6}
-        className={`mt-3 w-full resize-none rounded-[8px] border px-3 py-2 text-[11px] leading-5 outline-none transition ${
-          isEditing
-            ? "border-[#2E4364] bg-[#0B1423] text-slate-200"
-            : "border-transparent bg-transparent text-slate-400"
-        }`}
+        className={`mt-3 w-full resize-none rounded-[8px] border px-3 py-2 text-[11px] leading-5 outline-none transition ${isEditing
+          ? "border-[#2E4364] bg-[#0B1423] text-slate-200"
+          : "border-transparent bg-transparent text-slate-400"
+          }`}
       />
 
       {isEditing ? (
@@ -394,6 +387,11 @@ export default function GenerateStage() {
   const projectId = activeProject?.id || "";
   const featureId = activeFeature?.id || "";
   const versionNumber = activeVersion?.number;
+
+  const versionOutputs = useMemo(() => {
+    if (!projectId || !featureId || !Number.isFinite(versionNumber)) return null;
+    return getVersionOutputs({ projectId, featureId, versionNumber });
+  }, [projectId, featureId, versionNumber]);
 
   const [groups, setGroups] = useState(INITIAL_GROUPS);
   const [expandedSections, setExpandedSections] = useState({
@@ -540,11 +538,86 @@ export default function GenerateStage() {
   }
 
   if (stageKey === "validator") {
+    if (!versionOutputs?.validator) {
+      return (
+        <PlaceholderCard
+          title="Validator"
+          subtitle="Open a version from the Feature Workspace to review validator output."
+        />
+      );
+    }
+
+    const validator = versionOutputs.validator;
+
     return (
-      <PlaceholderCard
-        title="Validator"
-        subtitle="We can style the Validator page next in the same visual system."
-      />
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 text-[#8BB5FF]">
+          <button
+            type="button"
+            onClick={() => navigate("/projects?stage=feature-workspace")}
+            className="inline-flex items-center justify-center rounded p-1 transition hover:bg-white/5"
+            title="Back"
+          >
+            <IconBack className="h-4 w-4" />
+          </button>
+          <span className="text-[15px] font-medium">Validator</span>
+        </div>
+
+        <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-lg font-semibold text-white">Validator Summary</div>
+              <div className="mt-1 text-sm text-slate-400">
+                {activeProject?.name} / {activeFeature?.name} / v{versionNumber}
+              </div>
+            </div>
+
+            <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-200">
+              Score: {validator.score ?? "—"}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr,0.85fr]">
+            <div className="rounded-[18px] border border-white/8 bg-slate-950/40 p-5">
+              <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Questions</div>
+              <div className="mt-4 space-y-3">
+                {(validator.questions || []).map((question, index) => (
+                  <div key={`${index}-${question}`} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-slate-200">
+                    <span className="mr-2 text-slate-500">{index + 1}.</span>
+                    {question}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[18px] border border-white/8 bg-slate-950/40 p-5">
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Feedback</div>
+                <p className="mt-4 text-sm leading-6 text-slate-300">{validator.feedback || "No validator feedback available."}</p>
+              </div>
+
+              <div className="rounded-[18px] border border-white/8 bg-slate-950/40 p-5">
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Weak areas</div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(validator.weakAreas || []).map((item) => (
+                    <span key={item} className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate("/projects?stage=edit")}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-500"
+              >
+                Continue to Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     );
   }
 
@@ -586,10 +659,10 @@ export default function GenerateStage() {
         </div>
         <button
           type="button"
-          onClick={() => navigate("/projects?stage=version-detail")}
+          onClick={() => navigate("/projects?stage=feature-workspace")}
           className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
         >
-          Go to Feature Details
+          Go to Feature Workspace
         </button>
       </div>
     );
@@ -641,10 +714,10 @@ export default function GenerateStage() {
 
         <button
           type="button"
-          onClick={() => navigate("/projects?stage=version-detail")}
+          onClick={() => navigate("/projects?stage=feature-workspace")}
           className="mt-6 rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
         >
-          Back to Feature Details
+          Back to Feature Workspace
         </button>
       </div>
     );
@@ -655,7 +728,7 @@ export default function GenerateStage() {
       <div className="mb-4 flex items-center gap-2 text-[#8BB5FF]">
         <button
           type="button"
-          onClick={() => navigate("/projects?stage=version-detail")}
+          onClick={() => navigate("/projects?stage=feature-workspace")}
           className="inline-flex items-center justify-center rounded p-1 transition hover:bg-white/5"
           title="Back"
         >
@@ -685,9 +758,8 @@ export default function GenerateStage() {
                 className="flex w-full items-center gap-2 px-4 py-4 text-left"
               >
                 <IconChevron
-                  className={`h-4 w-4 text-slate-400 transition ${
-                    isExpanded ? "rotate-180" : ""
-                  }`}
+                  className={`h-4 w-4 text-slate-400 transition ${isExpanded ? "rotate-180" : ""
+                    }`}
                 />
                 <span className="text-[13px] text-slate-300">{group.title}</span>
               </button>
@@ -706,11 +778,10 @@ export default function GenerateStage() {
                     </div>
 
                     <div
-                      className={`grid gap-0 ${
-                        selectedCase && isSelectedGroup
-                          ? "grid-cols-1 lg:grid-cols-[1.1fr_0.95fr]"
-                          : "grid-cols-1"
-                      }`}
+                      className={`grid gap-0 ${selectedCase && isSelectedGroup
+                        ? "grid-cols-1 lg:grid-cols-[1.1fr_0.95fr]"
+                        : "grid-cols-1"
+                        }`}
                     >
                       <div className="p-3">
                         <div className="space-y-1.5">

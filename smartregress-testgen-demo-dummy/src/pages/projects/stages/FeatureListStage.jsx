@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { http, getErrorMessage } from "../../../api/http";
 import { useProjectSessionStore } from "../../../store/ProjectSessionStore";
-import { fetchFeatureDocumentsRegistry } from "../../../projectFlow/featureDocsApi";
+import { fetchFeatureDocumentsRegistry, deriveVersionsFromRegistry } from "../../../projectFlow/featureDocsApi";
 
 function IconFolder(props) {
   return (
@@ -37,7 +37,7 @@ function normalizeFeaturesResponse(responseData) {
     responseData,
   ];
 
-  const raw = candidates.find((x) => Array.isArray(x)) || [];
+  const raw = candidates.find((value) => Array.isArray(value)) || [];
 
   return raw
     .map((item) => {
@@ -70,12 +70,8 @@ function FeatureFolderTile({ feature, isOpening, onOpen }) {
       <IconFolder className="h-10 w-10 text-[#D9D285] transition duration-200 group-hover:scale-[1.02]" />
 
       <div className="mt-3 w-full">
-        <div className="truncate text-[11px] font-medium leading-4 text-slate-200">
-          {feature.name}
-        </div>
-        {isOpening ? (
-          <div className="mt-1 text-[10px] text-slate-500">Opening...</div>
-        ) : null}
+        <div className="truncate text-[11px] font-medium leading-4 text-slate-200">{feature.name}</div>
+        {isOpening ? <div className="mt-1 text-[10px] text-slate-500">Opening...</div> : null}
       </div>
     </button>
   );
@@ -94,9 +90,7 @@ function EmptyState({ onCreate }) {
         </div>
 
         <div className="mt-6 text-lg font-semibold text-white">No features yet</div>
-        <div className="mt-2 text-sm text-slate-400">
-          Create your first feature to continue.
-        </div>
+        <div className="mt-2 text-sm text-slate-400">Create your first feature to continue.</div>
       </button>
     </div>
   );
@@ -105,9 +99,10 @@ function EmptyState({ onCreate }) {
 export default function FeatureListStage() {
   const navigate = useNavigate();
 
-  const activeProject = useProjectSessionStore((s) => s.activeProject);
-  const setActiveFeature = useProjectSessionStore((s) => s.setActiveFeature);
-  const clearActiveVersion = useProjectSessionStore((s) => s.clearActiveVersion);
+  const activeProject = useProjectSessionStore((state) => state.activeProject);
+  const setActiveFeature = useProjectSessionStore((state) => state.setActiveFeature);
+  const clearActiveVersion = useProjectSessionStore((state) => state.clearActiveVersion);
+  const setActiveVersion = useProjectSessionStore((state) => state.setActiveVersion);
 
   const projectId = activeProject?.id || "";
   const [openingFeatureId, setOpeningFeatureId] = useState("");
@@ -116,8 +111,8 @@ export default function FeatureListStage() {
     queryKey: ["projects", projectId, "features"],
     enabled: Boolean(projectId),
     queryFn: async () => {
-      const res = await http.get(`/projects/${projectId}/features`);
-      return normalizeFeaturesResponse(res?.data);
+      const response = await http.get(`/projects/${projectId}/features`);
+      return normalizeFeaturesResponse(response?.data);
     },
   });
 
@@ -137,16 +132,17 @@ export default function FeatureListStage() {
         featureId: feature.id,
       });
 
-      const hasVersions = Array.isArray(registry?.versions) && registry.versions.length > 0;
-      const hasDocuments = Array.isArray(registry?.items) && registry.items.length > 0;
+      const versionsMeta = deriveVersionsFromRegistry(registry);
+      const hasDocuments = Boolean((registry?.items || []).length || versionsMeta.versions.length);
 
-      if (hasVersions || hasDocuments) {
-        navigate("/projects?stage=versions-list");
+      if (hasDocuments && Number.isFinite(versionsMeta.latest)) {
+        setActiveVersion(versionsMeta.latest);
+        navigate("/projects?stage=feature-workspace");
       } else {
         navigate("/projects?stage=upload-documents");
       }
     } catch {
-      navigate("/projects?stage=versions-list");
+      navigate("/projects?stage=upload-documents");
     } finally {
       setOpeningFeatureId("");
     }
@@ -156,9 +152,7 @@ export default function FeatureListStage() {
     return (
       <div className="rounded-[18px] border border-white/8 bg-white/[0.02] p-6">
         <div className="text-base font-semibold text-white">No project selected</div>
-        <div className="mt-2 text-sm text-slate-400">
-          Please go to Project List and open a project first.
-        </div>
+        <div className="mt-2 text-sm text-slate-400">Please go to Project List and open a project first.</div>
         <button
           type="button"
           onClick={() => navigate("/projects?stage=project-list")}
@@ -190,12 +184,8 @@ export default function FeatureListStage() {
   if (featuresQuery.isError) {
     return (
       <div className="rounded-[18px] border border-rose-400/20 bg-rose-500/10 p-6">
-        <div className="text-base font-semibold text-rose-100">
-          Failed to load features
-        </div>
-        <div className="mt-2 text-sm text-rose-200/90">
-          {getErrorMessage(featuresQuery.error)}
-        </div>
+        <div className="text-base font-semibold text-rose-100">Failed to load features</div>
+        <div className="mt-2 text-sm text-rose-200/90">{getErrorMessage(featuresQuery.error)}</div>
 
         <div className="mt-5 flex gap-3">
           <button

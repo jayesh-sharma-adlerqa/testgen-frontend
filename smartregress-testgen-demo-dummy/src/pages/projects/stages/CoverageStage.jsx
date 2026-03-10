@@ -1253,11 +1253,11 @@ export function CoverageExperience({ standalone = false }) {
           {step === "result" ? (
             <button
               type="button"
-              onClick={() => navigate("/projects?stage=version-detail")}
+              onClick={() => navigate("/projects?stage=feature-workspace")}
               className="inline-flex items-center gap-2 rounded-[8px] border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
             >
               <ArrowLeftIcon className="h-4 w-4" />
-              Back to Feature Details
+              Back to Feature Workspace
             </button>
           ) : null}
         </div>

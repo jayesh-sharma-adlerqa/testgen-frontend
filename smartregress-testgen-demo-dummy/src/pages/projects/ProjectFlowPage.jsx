@@ -7,8 +7,7 @@ import CreateProjectStage from "./stages/CreateProjectStage";
 import FeatureListStage from "./stages/FeatureListStage";
 import AddNewFeatureStage from "./stages/AddNewFeatureStage";
 import UploadDocumentsStage from "./stages/UploadDocumentsStage";
-import VersionsListStage from "./stages/VersionsListStage";
-import VersionDetailStage from "./stages/VersionDetailStage";
+import FeatureWorkspaceStage from "./stages/FeatureWorkspaceStage";
 import GenerateStage from "./stages/GenerateStage";
 import CoverageStage from "./stages/CoverageStage";
 import EditStage from "./stages/EditStage";
@@ -29,10 +28,8 @@ const STAGE_COMPONENTS = {
   "feature-list": FeatureListStage,
   "create-feature": AddNewFeatureStage,
   "add-new-feature": AddNewFeatureStage,
-  "versions-list": VersionsListStage,
   "upload-documents": UploadDocumentsStage,
-  "version-detail": VersionDetailStage,
-  "generate": GenerateStage,
+  "feature-workspace": FeatureWorkspaceStage, "generate": GenerateStage,
   "validator": GenerateStage,
   "coverage": CoverageStage,
   "edit": EditStage,
@@ -42,9 +39,7 @@ const STAGE_COMPONENTS = {
 export default function ProjectFlowPage() {
   const { stageKey } = useProjectFlow();
 
-  const StageComponent = useMemo(() => {
-    return STAGE_COMPONENTS[stageKey] || null;
-  }, [stageKey]);
+  const StageComponent = useMemo(() => STAGE_COMPONENTS[stageKey] || null, [stageKey]);
 
   return (
     <div className="mx-auto w-full max-w-6xl">

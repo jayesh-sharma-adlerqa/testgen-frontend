@@ -90,7 +90,7 @@ export default function ExportStage() {
         </button>
         <button
           type="button"
-          onClick={() => navigate("/projects?stage=feature-list")}
+          onClick={() => navigate("/projects?stage=feature-workspace")}
           className="rounded-xl bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
         >
           Back to Feature List

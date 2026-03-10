@@ -1,4 +1,3 @@
-// src/projectFlow/useProjectFlow.js
 import { useCallback, useEffect, useMemo } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { buildStagePath, getStageFromSearch, isProjectsRoute, normalizeStageKey } from "./flowConfig";
@@ -7,10 +6,16 @@ import { useProjectSessionStore } from "../store/ProjectSessionStore";
 
 function mergeSearchParams(current, updates) {
   const next = new URLSearchParams(current);
-  Object.entries(updates || {}).forEach(([k, v]) => {
-    if (v === null || v === undefined || v === "") next.delete(k);
-    else next.set(k, String(v));
+
+  Object.entries(updates || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === "") {
+      next.delete(key);
+      return;
+    }
+
+    next.set(key, String(value));
   });
+
   return next;
 }
 
@@ -19,13 +24,14 @@ export function useProjectFlow() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const activeProject = useProjectSessionStore((s) => s.activeProject);
-  const activeFeature = useProjectSessionStore((s) => s.activeFeature);
-  const activeVersion = useProjectSessionStore((s) => s.activeVersion);
+  const activeProject = useProjectSessionStore((state) => state.activeProject);
+  const activeFeature = useProjectSessionStore((state) => state.activeFeature);
+  const activeVersion = useProjectSessionStore((state) => state.activeVersion);
 
-  const clearAll = useProjectSessionStore((s) => s.clearAll);
-  const clearFeature = useProjectSessionStore((s) => s.clearActiveFeature);
-  const clearVersion = useProjectSessionStore((s) => s.clearActiveVersion);
+  const clearAll = useProjectSessionStore((state) => state.clearAll);
+  const clearFeature = useProjectSessionStore((state) => state.clearActiveFeature);
+  const clearVersion = useProjectSessionStore((state) => state.clearActiveVersion);
+  const setActiveVersion = useProjectSessionStore((state) => state.setActiveVersion);
 
   const isOnProjects = useMemo(() => isProjectsRoute(location.pathname), [location.pathname]);
 
@@ -34,7 +40,6 @@ export function useProjectFlow() {
     return getStageFromSearch(location.search);
   }, [isOnProjects, location.search]);
 
-  // Apply guard redirects when stage/context mismatches (clean URL = guards are mandatory)
   useEffect(() => {
     if (!isOnProjects) return;
 
@@ -47,7 +52,6 @@ export function useProjectFlow() {
     const nextStage = getGuardRedirectStage(stageKey, ctx);
 
     if (normalizeStageKey(stageKey) !== normalizeStageKey(nextStage)) {
-      // replace to avoid polluting browser history with invalid stages
       setSearchParams(mergeSearchParams(searchParams, { stage: nextStage }), { replace: true });
     }
   }, [
@@ -61,13 +65,12 @@ export function useProjectFlow() {
   ]);
 
   const goToStage = useCallback(
-    (nextStage, opts = {}) => {
+    (nextStage, options = {}) => {
       if (!isOnProjects) return;
 
-      const normalized = normalizeStageKey(nextStage);
-      const next = mergeSearchParams(searchParams, { stage: normalized });
-
-      setSearchParams(next, { replace: Boolean(opts.replace) });
+      const normalizedStage = normalizeStageKey(nextStage);
+      const nextSearch = mergeSearchParams(searchParams, { stage: normalizedStage });
+      setSearchParams(nextSearch, { replace: Boolean(options.replace) });
     },
     [isOnProjects, searchParams, setSearchParams]
   );
@@ -78,16 +81,21 @@ export function useProjectFlow() {
   }, [clearAll, navigate]);
 
   const goToProject = useCallback(() => {
-    clearFeature(); // also clears version inside store
+    clearFeature();
     goToStage("feature-list");
   }, [clearFeature, goToStage]);
 
   const goToFeature = useCallback(
-    (featureHasVersions) => {
-      clearVersion();
-      goToStage(featureHasVersions ? "versions-list" : "upload-documents");
+    ({ hasDocuments = false, latestVersion = null } = {}) => {
+      if (Number.isFinite(latestVersion)) {
+        setActiveVersion(latestVersion);
+      } else {
+        clearVersion();
+      }
+
+      goToStage(hasDocuments ? "feature-workspace" : "upload-documents");
     },
-    [clearVersion, goToStage]
+    [clearVersion, goToStage, setActiveVersion]
   );
 
   return {
@@ -103,4 +111,4 @@ export function useProjectFlow() {
     goToProject,
     goToFeature,
   };
-}
+};

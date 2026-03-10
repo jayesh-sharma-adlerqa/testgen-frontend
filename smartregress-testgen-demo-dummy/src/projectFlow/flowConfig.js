@@ -2,13 +2,12 @@ export const STAGES = [
   { key: "project-list", label: "Projects" },
   { key: "create-project", label: "Create Project" },
   { key: "feature-list", label: "Feature List" },
-  { key: "create-feature", label: "Create Feature" },
-  { key: "versions-list", label: "Versions" },
+  { key: "create-feature", label: "Add Feature" },
   { key: "upload-documents", label: "Upload Documents" },
-  { key: "version-detail", label: "Feature Details" },
+  { key: "feature-workspace", label: "Feature Workspace" },
   { key: "generate", label: "Generate" },
   { key: "validator", label: "Validator" },
-  { key: "coverage", label: "Code Coverage" },
+  { key: "coverage", label: "Coverage" },
   { key: "edit", label: "Edit" },
   { key: "export", label: "Export" },
 ];
@@ -16,8 +15,10 @@ export const STAGES = [
 export const STAGE_ALIASES = {
   "add-new-feature": "create-feature",
   "project-listing": "project-list",
-  "add-feature": "version-detail", // that step is not a separate screen in the new conditional flow
+  "add-feature": "feature-workspace",
   "upload-prd": "upload-documents",
+  "version-detail": "feature-workspace",
+  "versions-list": "feature-workspace",
 };
 
 export const DEFAULT_STAGE = "project-list";
@@ -51,4 +52,4 @@ export function buildStagePath(stageKey) {
 
 export function isProjectsRoute(pathname = "") {
   return pathname === "/projects" || pathname.startsWith("/projects/");
-};
+}

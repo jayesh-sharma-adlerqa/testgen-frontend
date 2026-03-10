@@ -65,7 +65,7 @@ export default function Topbar() {
 
     const stage = getStageFromSearch(location.search);
 
-    if (["version-detail", "generate", "validator", "coverage", "upload-documents"].includes(stage) && activeFeature?.name) {
+    if (["feature-workspace", "generate", "validator", "coverage", "edit", "export"].includes(stage) && activeFeature?.name) {
       return activeVersion?.number && stage !== "upload-documents"
         ? `${activeFeature.name} • v${activeVersion.number}`
         : activeFeature.name;
@@ -75,8 +75,8 @@ export default function Topbar() {
       return activeProject.name;
     }
 
-    if (stage === "versions-list" && activeFeature?.name) {
-      return `${activeFeature.name} • Versions`;
+    if (stage === "upload-documents" && activeFeature?.name) {
+      return `${activeFeature.name} • Upload`;
     }
 
     return getStageLabel(stage);

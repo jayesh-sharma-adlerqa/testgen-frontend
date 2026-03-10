@@ -4,17 +4,10 @@ import { normalizeStageKey } from "./flowConfig";
 export const STAGE_REQUIREMENTS = {
   "project-list": { project: false, feature: false, version: false },
   "create-project": { project: false, feature: false, version: false },
-
   "feature-list": { project: true, feature: false, version: false },
   "create-feature": { project: true, feature: false, version: false },
-
-  "versions-list": { project: true, feature: true, version: false },
   "upload-documents": { project: true, feature: true, version: false },
-
-  // Version is "soft-required": if not selected yet, VersionDetail can resolve latest.
-  "version-detail": { project: true, feature: true, version: false },
-
-  // For generation screens, we require a resolved version.
+  "feature-workspace": { project: true, feature: true, version: false },
   "generate": { project: true, feature: true, version: true },
   "validator": { project: true, feature: true, version: true },
   "coverage": { project: true, feature: true, version: true },
@@ -36,7 +29,7 @@ export function getGuardRedirectStage(stageKey, ctx) {
 
   if (r.project && !hasProject) return "project-list";
   if (r.feature && !hasFeature) return "feature-list";
-  if (r.version && !hasVersion) return "version-detail";
+  if (r.version && !hasVersion) return "feature-workspace";
 
   return s;
 }

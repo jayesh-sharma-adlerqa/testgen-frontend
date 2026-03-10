@@ -1,13 +1,7 @@
 import { getStageLabel, normalizeStageKey } from "./flowConfig";
 
-export function buildCrumbs({
-  stageKey,
-  ctx,
-  featureHasVersions,
-  resolvedVersionNumber,
-  latestVersion,
-}) {
-  const s = normalizeStageKey(stageKey);
+export function buildCrumbs({ stageKey, ctx, featureHasDocuments, resolvedVersionNumber }) {
+  const normalizedStage = normalizeStageKey(stageKey);
 
   const crumbs = [
     {
@@ -18,7 +12,7 @@ export function buildCrumbs({
     },
   ];
 
-  if (s === "create-project") {
+  if (normalizedStage === "create-project") {
     crumbs.push({
       id: "crumb-create-project",
       label: getStageLabel("create-project"),
@@ -42,7 +36,7 @@ export function buildCrumbs({
     clear: "feature",
   });
 
-  if (s === "feature-list") {
+  if (normalizedStage === "feature-list") {
     crumbs.push({
       id: "crumb-feature-list",
       label: getStageLabel("feature-list"),
@@ -52,7 +46,7 @@ export function buildCrumbs({
     return crumbs;
   }
 
-  if (s === "create-feature") {
+  if (normalizedStage === "create-feature") {
     crumbs.push({
       id: "crumb-create-feature",
       label: getStageLabel("create-feature"),
@@ -69,66 +63,42 @@ export function buildCrumbs({
   crumbs.push({
     id: "crumb-feature",
     label: feature.name || "Feature",
-    targetStage: featureHasVersions ? "versions-list" : "upload-documents",
-    clear: "version",
+    targetStage: featureHasDocuments ? "feature-workspace" : "upload-documents",
+    clear: null,
   });
 
-  if (s === "upload-documents") {
-    if (featureHasVersions && Number.isFinite(latestVersion)) {
-      crumbs.push({
-        id: "crumb-latest-version",
-        label: `Version ${String(latestVersion).padStart(2, "0")}`,
-        targetStage: "version-detail",
-        clear: null,
-      });
-
-      crumbs.push({
-        id: "crumb-create-version",
-        label: "Create Version",
-        targetStage: "upload-documents",
-        clear: null,
-      });
-    } else {
-      crumbs.push({
-        id: "crumb-upload-documents",
-        label: getStageLabel("upload-documents"),
-        targetStage: "upload-documents",
-        clear: null,
-      });
-    }
-
-    return crumbs;
-  }
-
-  if (s === "versions-list") {
+  if (normalizedStage === "upload-documents") {
     crumbs.push({
-      id: "crumb-versions-list",
-      label: getStageLabel("versions-list"),
-      targetStage: "versions-list",
+      id: "crumb-upload-documents",
+      label: getStageLabel("upload-documents"),
+      targetStage: "upload-documents",
       clear: null,
     });
     return crumbs;
   }
 
-  if (Number.isFinite(resolvedVersionNumber)) {
+  if (
+    ["generate", "validator", "coverage", "edit", "export"].includes(normalizedStage) &&
+    Number.isFinite(resolvedVersionNumber)
+  ) {
     crumbs.push({
       id: "crumb-version",
       label: `Version ${String(resolvedVersionNumber).padStart(2, "0")}`,
-      targetStage: "version-detail",
+      targetStage: "feature-workspace",
       clear: null,
     });
   }
 
-  const leafLabel = getStageLabel(s);
-  const stageAlreadyRepresented =
-    s === "version-detail" ||
-    crumbs.some((crumb) => crumb.targetStage === s || crumb.label === leafLabel);
+  const leafLabel = getStageLabel(normalizedStage);
+  const stageAlreadyRepresented = crumbs.some(
+    (crumb) => crumb.targetStage === normalizedStage || crumb.label === leafLabel
+  );
 
-  if (!stageAlreadyRepresented && s !== "project-list") {
+  if (!stageAlreadyRepresented && normalizedStage !== "project-list") {
     crumbs.push({
-      id: `crumb-${s}`,
+      id: `crumb-${normalizedStage}`,
       label: leafLabel,
-      targetStage: s,
+      targetStage: normalizedStage,
       clear: null,
     });
   }

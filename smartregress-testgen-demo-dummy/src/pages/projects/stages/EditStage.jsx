@@ -7,7 +7,11 @@ function FieldBlock({ title, value, onChange, helper }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
       <div className="text-sm font-semibold text-white">{title}</div>
-      {helper ? <div className="mt-1 text-xs text-slate-500">{helper}</div> : null}
+
+      {helper ? (
+        <div className="mt-1 text-xs text-slate-500">{helper}</div>
+      ) : null}
+
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -27,6 +31,7 @@ function splitLines(text) {
 
 export default function EditStage() {
   const navigate = useNavigate();
+
   const activeProject = useProjectSessionStore((s) => s.activeProject);
   const activeFeature = useProjectSessionStore((s) => s.activeFeature);
   const activeVersion = useProjectSessionStore((s) => s.activeVersion);
@@ -37,7 +42,12 @@ export default function EditStage() {
 
   const baseOutputs = useMemo(() => {
     if (!projectId || !featureId || !Number.isFinite(versionNumber)) return null;
-    return getVersionOutputs({ projectId, featureId, versionNumber });
+
+    return getVersionOutputs({
+      projectId,
+      featureId,
+      versionNumber,
+    });
   }, [projectId, featureId, versionNumber]);
 
   const [uiTests, setUiTests] = useState("");
@@ -57,13 +67,19 @@ export default function EditStage() {
     setValidatorQuestions((baseOutputs.validator?.questions || []).join("\n"));
     setCoverageNotes((baseOutputs.coverage?.notes || []).join("\n"));
     setSaved(false);
-  }, [baseOutputs]);
+  }, [versionNumber]); // fixed dependency
 
   if (!projectId || !featureId || !Number.isFinite(versionNumber) || !baseOutputs) {
     return (
       <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-6">
-        <div className="text-lg font-semibold text-white">Nothing to edit yet</div>
-        <div className="mt-2 text-sm text-slate-400">Generate or open a version first, then the demo editor will become available.</div>
+        <div className="text-lg font-semibold text-white">
+          Nothing to edit yet
+        </div>
+
+        <div className="mt-2 text-sm text-slate-400">
+          Generate or open a version first, then the demo editor will become
+          available.
+        </div>
       </div>
     );
   }
@@ -138,10 +154,10 @@ export default function EditStage() {
         </button>
         <button
           type="button"
-          onClick={() => navigate("/projects?stage=version-detail")}
+          onClick={() => navigate("/projects?stage=feature-workspace")}
           className="rounded-xl bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
         >
-          Back to Feature Details
+          Back to Feature Workspace
         </button>
       </div>
     </div>

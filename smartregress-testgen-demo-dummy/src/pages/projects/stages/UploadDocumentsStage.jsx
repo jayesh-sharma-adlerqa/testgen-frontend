@@ -1,13 +1,9 @@
-// src/pages/projects/stages/UploadDocumentsStage.jsx
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { http, getErrorMessage } from "../../../api/http";
 import { useProjectSessionStore } from "../../../store/ProjectSessionStore";
-import {
-  fetchFeatureDocumentsRegistry,
-  deriveVersionsFromRegistry,
-} from "../../../projectFlow/featureDocsApi";
+import { fetchFeatureDocumentsRegistry, deriveVersionsFromRegistry } from "../../../projectFlow/featureDocsApi";
 
 function StepBadge({ number }) {
   return (
@@ -86,19 +82,19 @@ function UploadField({
     fileInputRef.current?.click();
   }
 
-  function handleFileChange(e) {
-    const picked = e.target.files?.[0] || null;
+  function handleFileChange(event) {
+    const picked = event.target.files?.[0] || null;
     if (picked) {
       setFile(picked);
       setText("");
     }
-    e.target.value = "";
+    event.target.value = "";
   }
 
-  function handleTextChange(e) {
-    const next = e.target.value;
-    setText(next);
-    if (file && next.trim()) {
+  function handleTextChange(event) {
+    const nextValue = event.target.value;
+    setText(nextValue);
+    if (file && nextValue.trim()) {
       setFile(null);
     }
   }
@@ -188,9 +184,9 @@ export default function UploadDocumentsStage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const activeProject = useProjectSessionStore((s) => s.activeProject);
-  const activeFeature = useProjectSessionStore((s) => s.activeFeature);
-  const setActiveVersion = useProjectSessionStore((s) => s.setActiveVersion);
+  const activeProject = useProjectSessionStore((state) => state.activeProject);
+  const activeFeature = useProjectSessionStore((state) => state.activeFeature);
+  const setActiveVersion = useProjectSessionStore((state) => state.setActiveVersion);
 
   const projectId = activeProject?.id || "";
   const featureId = activeFeature?.id || "";
@@ -207,35 +203,22 @@ export default function UploadDocumentsStage() {
   const [figma, setFigma] = useState("");
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
 
-  // Only one field required: PRD or HLD or LLD or Figma
-  const anyProvided = useMemo(() => {
-    return (
-      Boolean(prdFile) ||
-      Boolean(prdText.trim()) ||
-      Boolean(hldFile) ||
-      Boolean(hldText.trim()) ||
-      Boolean(lldFile) ||
-      Boolean(lldText.trim()) ||
-      Boolean(figma.trim())
-    );
-  }, [prdFile, prdText, hldFile, hldText, lldFile, lldText, figma]);
-
-  const submitDisabled = !projectId || !featureId || !anyProvided;
+  const hasPrd = useMemo(() => Boolean(prdFile) || Boolean(prdText.trim()), [prdFile, prdText]);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      const fd = new FormData();
+      const formData = new FormData();
 
-      if (prdFile) fd.append("prd", prdFile);
-      else if (prdText.trim()) fd.append("prd", prdText.trim());
+      if (prdFile) formData.append("prd", prdFile);
+      else if (prdText.trim()) formData.append("prd", prdText.trim());
 
-      if (hldFile) fd.append("hld", hldFile);
-      else if (hldText.trim()) fd.append("hld", hldText.trim());
+      if (hldFile) formData.append("hld", hldFile);
+      else if (hldText.trim()) formData.append("hld", hldText.trim());
 
-      if (lldFile) fd.append("lld", lldFile);
-      else if (lldText.trim()) fd.append("lld", lldText.trim());
+      if (lldFile) formData.append("lld", lldFile);
+      else if (lldText.trim()) formData.append("lld", lldText.trim());
 
-      if (figma.trim()) fd.append("figma", figma.trim());
+      if (figma.trim()) formData.append("figma", figma.trim());
 
       let versionNumber = 1;
 
@@ -247,16 +230,15 @@ export default function UploadDocumentsStage() {
         versionNumber = 1;
       }
 
-      const res = await http.post(
+      const response = await http.post(
         `/projects/${projectId}/features/${featureId}/documents/bulk?versionNumber=${encodeURIComponent(
           String(versionNumber)
         )}`,
-        fd
+        formData
       );
 
-      return { data: res?.data, versionNumber };
+      return { data: response?.data, versionNumber };
     },
-
     onSuccess: async ({ versionNumber }) => {
       await queryClient.invalidateQueries({
         queryKey: ["projects", projectId, "features"],
@@ -266,8 +248,12 @@ export default function UploadDocumentsStage() {
         queryKey: ["projects", projectId, "features", featureId, "docs-registry"],
       });
 
+      await queryClient.invalidateQueries({
+        queryKey: ["projects", projectId, "features", featureId, "documents-by-version", versionNumber],
+      });
+
       setActiveVersion(versionNumber);
-      navigate("/projects?stage=version-detail");
+      navigate("/projects?stage=feature-workspace");
     },
   });
 
@@ -275,7 +261,7 @@ export default function UploadDocumentsStage() {
     setHasTriedSubmit(true);
 
     if (!projectId || !featureId) return;
-    if (!anyProvided) return;
+    if (!hasPrd) return;
 
     uploadMutation.mutate();
   }
@@ -283,12 +269,8 @@ export default function UploadDocumentsStage() {
   if (!projectId || !featureId) {
     return (
       <div className="rounded-[18px] border border-white/8 bg-white/[0.02] p-6">
-        <div className="text-base font-semibold text-white">
-          Project / Feature not selected
-        </div>
-        <div className="mt-2 text-sm text-slate-400">
-          Please open a project and feature first.
-        </div>
+        <div className="text-base font-semibold text-white">Project / Feature not selected</div>
+        <div className="mt-2 text-sm text-slate-400">Please open a project and feature first.</div>
 
         <button
           type="button"
@@ -303,13 +285,17 @@ export default function UploadDocumentsStage() {
 
   return (
     <section className="w-full">
+      <div className="mb-4 rounded-[16px] border border-blue-400/15 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+        Every upload creates the next version for this feature and opens the Feature Workspace with that version selected.
+      </div>
+
       <div className="rounded-[18px] border border-[#111A2C] bg-[#081221] px-6 py-6 shadow-[0_18px_60px_rgba(0,0,0,0.25)]">
         <div className="rounded-[16px] border border-[#0E1626] bg-[#0B1423] px-6 py-7">
           <div className="space-y-7">
             <UploadField
               step="1"
               label="Upload PRD"
-              placeholder="Paste link or upload DOC"
+              placeholder="Paste link / pageId or upload file"
               file={prdFile}
               setFile={setPrdFile}
               text={prdText}
@@ -320,7 +306,7 @@ export default function UploadDocumentsStage() {
             <UploadField
               step="2"
               label="Upload HLD"
-              placeholder="Paste link or upload DOC"
+              placeholder="Paste link / pageId or upload file"
               file={hldFile}
               setFile={setHldFile}
               text={hldText}
@@ -331,7 +317,7 @@ export default function UploadDocumentsStage() {
             <UploadField
               step="3"
               label="Upload LLD"
-              placeholder="Paste link or upload DOC"
+              placeholder="Paste link / pageId or upload file"
               file={lldFile}
               setFile={setLldFile}
               text={lldText}
@@ -348,8 +334,8 @@ export default function UploadDocumentsStage() {
               <div className="flex min-h-[42px] items-center rounded-[10px] border border-[#31415D] bg-[#1A2334] px-3">
                 <input
                   value={figma}
-                  onChange={(e) => setFigma(e.target.value)}
-                  placeholder="Paste link"
+                  onChange={(event) => setFigma(event.target.value)}
+                  placeholder="Paste Figma link or file id"
                   className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
                 />
 
@@ -367,9 +353,9 @@ export default function UploadDocumentsStage() {
               </div>
             </div>
 
-            {hasTriedSubmit && !anyProvided ? (
+            {hasTriedSubmit && !hasPrd ? (
               <div className="rounded-[10px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-                Please provide at least one item: PRD, HLD, LLD, or Figma link.
+                PRD is required to create the next feature version.
               </div>
             ) : null}
 
@@ -382,14 +368,22 @@ export default function UploadDocumentsStage() {
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-5 flex gap-3">
         <button
           type="button"
           onClick={handleContinue}
-          disabled={submitDisabled || uploadMutation.isPending}
+          disabled={!projectId || !featureId || !hasPrd || uploadMutation.isPending}
           className="rounded-[8px] bg-[#8AA8D9] px-8 py-2.5 text-sm font-medium text-white transition hover:bg-[#97B4E2] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {uploadMutation.isPending ? "Uploading..." : "Continue"}
+          {uploadMutation.isPending ? "Uploading..." : "Continue to Workspace"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/projects?stage=feature-workspace")}
+          className="rounded-[8px] bg-white/10 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-white/15"
+        >
+          Back to Workspace
         </button>
       </div>
     </section>
