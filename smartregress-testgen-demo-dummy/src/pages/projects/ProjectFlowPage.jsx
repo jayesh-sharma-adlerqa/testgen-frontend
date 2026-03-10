@@ -9,9 +9,8 @@ import AddNewFeatureStage from "./stages/AddNewFeatureStage";
 import UploadDocumentsStage from "./stages/UploadDocumentsStage";
 import FeatureWorkspaceStage from "./stages/FeatureWorkspaceStage";
 import GenerateStage from "./stages/GenerateStage";
+import ValidatorStage from "./stages/ValidatorStage";
 import CoverageStage from "./stages/CoverageStage";
-import EditStage from "./stages/EditStage";
-import ExportStage from "./stages/ExportStage";
 
 function UnknownStage({ stageKey }) {
   return (
@@ -29,11 +28,10 @@ const STAGE_COMPONENTS = {
   "create-feature": AddNewFeatureStage,
   "add-new-feature": AddNewFeatureStage,
   "upload-documents": UploadDocumentsStage,
-  "feature-workspace": FeatureWorkspaceStage, "generate": GenerateStage,
-  "validator": GenerateStage,
+  "feature-workspace": FeatureWorkspaceStage,
+  "generate": GenerateStage,
+  "validator": ValidatorStage,
   "coverage": CoverageStage,
-  "edit": EditStage,
-  "export": ExportStage,
 };
 
 export default function ProjectFlowPage() {

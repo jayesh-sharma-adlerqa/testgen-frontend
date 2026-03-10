@@ -8,8 +8,6 @@ export const STAGES = [
   { key: "generate", label: "Generate" },
   { key: "validator", label: "Validator" },
   { key: "coverage", label: "Coverage" },
-  { key: "edit", label: "Edit" },
-  { key: "export", label: "Export" },
 ];
 
 export const STAGE_ALIASES = {

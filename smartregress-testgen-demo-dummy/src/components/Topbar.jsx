@@ -65,7 +65,7 @@ export default function Topbar() {
 
     const stage = getStageFromSearch(location.search);
 
-    if (["feature-workspace", "generate", "validator", "coverage", "edit", "export"].includes(stage) && activeFeature?.name) {
+    if (["feature-workspace", "generate", "validator", "coverage"].includes(stage) && activeFeature?.name) {
       return activeVersion?.number && stage !== "upload-documents"
         ? `${activeFeature.name} • v${activeVersion.number}`
         : activeFeature.name;

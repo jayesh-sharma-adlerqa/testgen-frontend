@@ -1,4 +1,3 @@
-// src/projectFlow/guards.js
 import { normalizeStageKey } from "./flowConfig";
 
 export const STAGE_REQUIREMENTS = {
@@ -11,8 +10,6 @@ export const STAGE_REQUIREMENTS = {
   "generate": { project: true, feature: true, version: true },
   "validator": { project: true, feature: true, version: true },
   "coverage": { project: true, feature: true, version: true },
-  "edit": { project: true, feature: true, version: true },
-  "export": { project: true, feature: true, version: true },
 };
 
 function req(stageKey) {

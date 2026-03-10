@@ -77,10 +77,7 @@ export function buildCrumbs({ stageKey, ctx, featureHasDocuments, resolvedVersio
     return crumbs;
   }
 
-  if (
-    ["generate", "validator", "coverage", "edit", "export"].includes(normalizedStage) &&
-    Number.isFinite(resolvedVersionNumber)
-  ) {
+  if (["generate", "validator", "coverage"].includes(normalizedStage) && Number.isFinite(resolvedVersionNumber)) {
     crumbs.push({
       id: "crumb-version",
       label: `Version ${String(resolvedVersionNumber).padStart(2, "0")}`,

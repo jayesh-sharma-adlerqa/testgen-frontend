@@ -35,7 +35,7 @@ export default function ProjectFlowBreadcrumbs() {
   const resolvedVersionNumber = useMemo(() => {
     if (Number.isFinite(activeVersion?.number)) return activeVersion.number;
 
-    const versionAwareStages = ["generate", "validator", "coverage", "edit", "export"];
+    const versionAwareStages = ["generate", "validator", "coverage"];
     return versionAwareStages.includes(stageKey) && Number.isFinite(derived.latest) ? derived.latest : null;
   }, [activeVersion?.number, derived.latest, stageKey]);
 
